@@ -1,0 +1,85 @@
+// Prisma schema for SwapOS
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Process {
+  id              String      @id @default(uuid())
+  pid             Int         @unique
+  name            String
+  memoryRequired  Int
+  memoryAllocated Int
+  priority        Int
+  state           String
+  pageCount       Int
+  ramPages        Int
+  swapPages       Int
+  createdAt       DateTime    @default(now())
+  lastAccessed    DateTime    @default(now())
+  terminatedAt    DateTime?
+  swapEvents      SwapEvent[]
+}
+
+model MemoryBlock {
+  id          String    @id @default(uuid())
+  blockIndex  Int       @unique
+  size        Int
+  status      String    // FREE, ALLOCATED, RESERVED
+  processId   String?
+  allocatedAt DateTime?
+}
+
+model SwapBlock {
+  id          String    @id @default(uuid())
+  blockIndex  Int       @unique
+  size        Int
+  status      String    // FREE, OCCUPIED
+  processId   String?
+  allocatedAt DateTime?
+}
+
+model SwapEvent {
+  id         String   @id @default(uuid())
+  type       String   // PROCESS_CREATED, PROCESS_TERMINATED, MEMORY_ALLOCATED, MEMORY_RELEASED, SWAP_STARTED, SWAP_COMPLETED, PAGE_OUT, PAGE_IN, MEMORY_WARNING, MEMORY_CRITICAL, ALGORITHM_CHANGED
+  processId  String?
+  process    Process? @relation(fields: [processId], references: [id], onDelete: Cascade)
+  memorySize Int
+  algorithm  String
+  duration   Float    // milliseconds
+  status     String   // SUCCESS, FAILED
+  details    String?  // JSON stringified details
+  timestamp  DateTime @default(now())
+}
+
+model SystemSettings {
+  id                    String   @id @default("default")
+  totalRam              Int      @default(16384) // MB
+  totalSwap             Int      @default(32768) // MB
+  blockSize             Int      @default(256)   // MB
+  pageSize              Int      @default(4)     // KB
+  warningThreshold      Int      @default(75)    // %
+  criticalThreshold     Int      @default(90)    // %
+  autoSwapThreshold     Int      @default(85)    // %
+  autoSwappingEnabled   Boolean  @default(true)
+  swapAlgorithm         String   @default("LRU")
+  pageReplacementAlgo   String   @default("LRU")
+  tickInterval          Int      @default(1000)  // ms
+  updatedAt             DateTime @updatedAt
+}
+
+model AnalyticsSnapshot {
+  id                  String   @id @default(uuid())
+  timestamp           DateTime @default(now())
+  ramUtilization      Float
+  swapUtilization     Float
+  activeProcesses     Int
+  swappedProcesses    Int
+  swapOperationsCount Int
+  pageFaultCount      Int
+  averageSwapDuration Float
+}
